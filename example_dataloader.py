@@ -19,7 +19,11 @@ def cifar10_dataloader(root='./data', train=True, batch_size=4, drop_last=True, 
 
     loader = DataLoader(
         dataset=tvd.CIFAR10(root=root, train=train, transform=transforms, download=True),
-        batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
+        batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, drop_last=drop_last
+    )
+
+    return loader
+
     )
 
     return loader
