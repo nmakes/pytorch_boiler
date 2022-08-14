@@ -154,7 +154,7 @@ class Boiler(nn.Module):
         """
         for data in tqdm(self.val_dataloader):
             model_output = self.infer(data)
-            loss = self.losS(model_output, data)
+            loss = self.loss(model_output, data)
             self.tracker.update('validation_loss', loss.cpu().detach().numpy())
 
             if is_method_overloaded(self.performance):
@@ -169,25 +169,28 @@ class Boiler(nn.Module):
         Returns:
             Boiler: Self.
         """
+        start_epoch = 0
         if self.load_path is not None:
             print('\nBoiler | Loading from {}'.format(self.load_path))
             loaded_object = torch.load(self.load_path)
             self.load_state_dict(loaded_object['state_dict'])
             self.tracker.load_state_dict(loaded_object['tracker'])
+            start_epoch = loaded_object['epoch'] + 1
 
-        for e in range(self.epochs):
+        for e in range(start_epoch, self.epochs):
             print('\nBoiler | Training epoch {}/{}...'.format(e+1, self.epochs))
             self.train_epoch()
             self.eval_epoch()
             print(self.tracker.summarize())
             self.tracker.stash()
         
-        if self.save_path is not None:
-            os.makedirs(os.path.abspath(os.path.dirname(self.save_path)), exist_ok=True)
-            saved_object = {
-                'state_dict': self.state_dict(),
-                'tracker': self.tracker.state_dict()
-            }
-            torch.save(saved_object, self.save_path)
+            if self.save_path is not None:
+                os.makedirs(os.path.abspath(os.path.dirname(self.save_path)), exist_ok=True)
+                saved_object = {
+                    'state_dict': self.state_dict(),
+                    'tracker': self.tracker.state_dict(),
+                    'epoch': e
+                }
+                torch.save(saved_object, self.save_path)
 
         return self

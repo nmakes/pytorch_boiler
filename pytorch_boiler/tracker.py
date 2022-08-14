@@ -21,7 +21,7 @@ class Tracker:
     def summarize(self):
         summary = {}
         for key in self.history:
-            summary[key] = np.mean(self.history[key])
+            summary[key] = np.mean(self.history[key]).item()
         return json.dumps(summary, indent=2)
 
     def state_dict(self):
