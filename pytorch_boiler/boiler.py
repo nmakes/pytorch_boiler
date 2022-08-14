@@ -80,6 +80,19 @@ class Boiler(nn.Module):
         raise NotImplementedError()
 
     @init_overload_state
+    def performance(self, output, data):
+        """Computes performance metric. Must be overloaded for usage.
+
+        Args:
+            output (torch.Tensor|Any): The output from the model forward pass, or output from the post processor.
+            data (torch.Tensor|Any): The data batch loaded from the dataloader.
+
+        Returns:
+            torch.Tensor|Any: The performance metric computed on the current batch.
+        """
+        raise NotImplementedError()
+
+    @init_overload_state
     def infer(self, x):
         """Computes the inference in eval mode.
 
@@ -121,6 +134,10 @@ class Boiler(nn.Module):
             loss = self.loss(model_output, data)
             self.tracker.update('training_loss', loss.cpu().detach().numpy())
 
+            if is_method_overloaded(self.performance):
+                perf = self.performance(model_output, data)
+                self.tracker.update('training_perf', perf.cpu().detach().numpy())
+
             loss.backward()
             self.optimizer.step()
         return self.tracker
@@ -139,6 +156,10 @@ class Boiler(nn.Module):
             model_output = self.infer(data)
             loss = self.losS(model_output, data)
             self.tracker.update('validation_loss', loss.cpu().detach().numpy())
+
+            if is_method_overloaded(self.performance):
+                perf = self.performance(model_output, data)
+                self.tracker.update('validation_perf', perf.cpu().detach().numpy())
         return self.tracker
 
     @init_overload_state

@@ -16,7 +16,12 @@ class Trainer(Boiler):
     @overload
     def loss(self, model_output, data):
         images, labels = data
-        return torch.nn.functional.cross_entropy(model_output, labels, reduction='mean')
+    @overload
+    def performance(self, model_output, data):
+        images, labels = data
+        preds = model_output.argmax(dim=-1)
+        acc = (preds == labels.cuda()).float().mean()
+        return acc
 
 
 if __name__ == '__main__':
