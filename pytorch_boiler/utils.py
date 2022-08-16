@@ -1,3 +1,6 @@
+import json
+
+
 # -----------------------------
 # Utilities to override methods
 # -----------------------------
@@ -15,3 +18,10 @@ def init_overload_state(func):
     if not is_method_overloaded(func):
         func.is_overloaded = False
     return func
+
+
+# ---------------
+# Text formatting
+# ---------------
+def prettify_dict(d):
+    return json.dumps(d, indent=2)

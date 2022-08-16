@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from typing import Any
 
-from .utils import init_overload_state, is_method_overloaded
+from .utils import init_overload_state, is_method_overloaded, prettify_dict
 from .tracker import Tracker
 
 
