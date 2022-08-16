@@ -159,6 +159,7 @@ class Boiler(nn.Module):
         Returns:
             Tracker: The tracker object.
         """
+        self.train()  # Set the mode to training
         for data in tqdm(self.train_dataloader):
             # Set optimizer zero grad
             self.optimizer.zero_grad()
@@ -205,6 +206,7 @@ class Boiler(nn.Module):
         Returns:
             Tracker: The tracker object.
         """
+        self.eval()  # Set the mode to evaluation
         for data in tqdm(self.val_dataloader):
             # Compute model output
             model_output = self.infer(data)
