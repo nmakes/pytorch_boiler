@@ -3,6 +3,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+try:
+    from apex import amp
+except:
+    amp = None
 
 from tqdm import tqdm
 from typing import Any
@@ -13,7 +17,7 @@ from .tracker import Tracker
 
 class Boiler(nn.Module):
 
-    def __init__(self, model, optimizer, train_dataloader, val_dataloader, epochs, save_path=None, load_path=None):
+    def __init__(self, model, optimizer, train_dataloader, val_dataloader, epochs, save_path=None, load_path=None, mixed_precision=False):
         super(Boiler, self).__init__()
         self.model = model
         self.optimizer = optimizer
@@ -24,7 +28,15 @@ class Boiler(nn.Module):
         self.save_path = save_path
         self.load_path = load_path
 
+        self.mixed_precision = mixed_precision
+        assert (not mixed_precision) or (amp is not None), "A valid nvidia-apex installation must be available if mixed_precision=True."
+
+        # Initialize tracker
         self.tracker = Tracker()
+
+        # Initialize mixed precision
+        if self.mixed_precision:
+            self.model, self.optimizer = amp.initialize(model, optimizer, opt_level="O1")
 
     @init_overload_state
     def pre_process(self, x):
@@ -172,7 +184,11 @@ class Boiler(nn.Module):
                         self.tracker.update('training_{}'.format(key), decoded_perf[key].cpu().detach().numpy() if type(decoded_perf[key])==torch.Tensor else decoded_perf[key])
 
             # Backpropagate loss
-            decoded_loss['summary'].backward()
+            if self.mixed_precision:
+                with amp.scale_loss(decoded_loss['summary'], self.optimizer) as scaled_loss:
+                    scaled_loss.backward()
+            else:
+                decoded_loss['summary'].backward()
 
             # Update model parameters
             self.optimizer.step()

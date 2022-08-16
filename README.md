@@ -22,20 +22,33 @@ See 40-line example on MNIST/CIFAR in [example.py](example.py):
     PYTHONPATH=$PYTHONPATH:./ python3 example.py
 ```
 
-## Supported Functionalities
+## 1. Installation
+
+Basic Requirements:
+
+* `numpy`
+* `pytorch`
+* `torchvision`
+
+Other Requirements:
+
+* `nvidia-apex` [[install]](https://github.com/NVIDIA/apex#from-source) (for mixed-precision training)
+
+
+## 2. Supported Functionalities
 
 * Customizable Train / Inference engine with forward and infer modes
 * Tracking multiple training / validation losses and metrics
 * Loading / Saving model, optimizer and trackers based on validation loss
 * Training MNIST / CIFAR in 40-lines (see [example.py](example.py))
+* Supports Apex Amp for mixed precision training
 
 
 ## TODO
 
 * Support for multiple loss optimization using multiple optimizers
-* Support Apex Amp training
 * Support for torchscript
-* Documentation: using metrics  losses beyond the example script
+* Documentation: using metrics and losses beyond the example script
 
 
 # Cite
