@@ -14,16 +14,20 @@
 # Introduction
 Pytorch Boiler is a minimalistic boiler plate code for training pytorch models.
 
+See 40-line example on MNIST/CIFAR in [example.py](example.py): 
 
-## Current Functionalities
+```
+    git clone https://github.com/nmakes/pytorch_boiler
+    cd pytorch_boiler
+    PYTHONPATH=$PYTHONPATH:./ python3 example.py
+```
 
-* Train / Inference loop
-* Separate forward and infer modes handling no_grad
-* Tracking training / validation loss
-* Loading / Saving model, optimizer and tracker state_dict
-* 40-line example
-* Tracking multiple custom losses / metrics
-* Saving training state based on validation loss
+## Supported Functionalities
+
+* Customizable Train / Inference engine with forward and infer modes
+* Tracking multiple training / validation losses and metrics
+* Loading / Saving model, optimizer and trackers based on validation loss
+* Training MNIST / CIFAR in 40-lines (see [example.py](example.py))
 
 
 ## TODO
