@@ -14,23 +14,26 @@ class Trainer(Boiler):
         return images.cuda()
 
     @overload
-    def loss(self, model_output, data):
+    def loss(self, model_output, data):  # Overload the loss function
         images, labels = data
-        return torch.nn.functional.cross_entropy(model_output, labels.cuda(), reduction='mean')
+        xe_loss = torch.nn.functional.cross_entropy(model_output, labels.cuda(), reduction='mean')
+        return xe_loss  # Can return a tensor, or a dictinoary like {'xe_loss': xe_loss} with multiple losses. See README.
 
     @overload
     def performance(self, model_output, data):
         images, labels = data
         preds = model_output.argmax(dim=-1)
         acc = (preds == labels.cuda()).float().mean()
-        return acc
+        return acc.cpu().detach().numpy()  # Can return a tensor, or a dictinoary like {'acc': acc} with multiple metrics. See README.
 
 
 if __name__ == '__main__':
-    model = TinyResNet(in_channels=3, hidden_channels=4, output_channels=10, num_layers=3, expansion_factor=2).cuda()
+    dataloader = mnist_dataloader; dataset = 'mnist'; in_channels = 1; batch_size = 256
+    # dataloader = cifar10_dataloader; dataset = 'cifar10'; in_channels = 3; batch_size = 32
+    model = TinyResNet(in_channels=in_channels, hidden_channels=4, output_channels=10, num_layers=3, expansion_factor=2).cuda()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=5e-4, weight_decay=1e-5)
-    train_dataloader = cifar10_dataloader(root='./data/cifar10', batch_size=32, train=True, shuffle=True, drop_last=True)
-    val_dataloader = cifar10_dataloader(root='./data/cifar10', batch_size=32, train=False, shuffle=False, drop_last=False)
+    train_dataloader = dataloader(root=f'./data/{dataset}', batch_size=batch_size, train=True, shuffle=True, drop_last=True)
+    val_dataloader = dataloader(root=f'./data/{dataset}', batch_size=batch_size, train=False, shuffle=False, drop_last=False)
 
     trainer = Trainer(model=model, optimizer=optimizer, train_dataloader=train_dataloader, val_dataloader=val_dataloader, 
                       epochs=10, save_path='./state_dict.pt', load_path=None).fit()
