@@ -36,3 +36,17 @@ See 40-line example on MNIST/CIFAR in [example.py](example.py):
 * Support Apex Amp training
 * Support for torchscript
 * Documentation: using metrics  losses beyond the example script
+
+
+# Cite
+
+If you found Pytorch Boiler useful in your project, please cite the following:
+
+```
+@software{Venkat_Pytorch_Boiler,
+author = {Venkat, Naveen},
+title = {{Pytorch Boiler}}
+}
+```
+
+Thanks!
