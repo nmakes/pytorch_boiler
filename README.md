@@ -14,12 +14,12 @@
 # Introduction
 Pytorch Boiler is a minimalistic boiler plate code for training pytorch models.
 
-See 40-line example on MNIST/CIFAR in [example.py](example.py): 
+See 40-line example on MNIST/CIFAR classification in [example.py](example_projects/image_classifier/example.py):
 
 ```
     git clone https://github.com/nmakes/pytorch_boiler
     cd pytorch_boiler
-    PYTHONPATH=$PYTHONPATH:./ python3 example.py
+    PYTHONPATH=$PYTHONPATH:./ python3 -m example_projects.image_classifier.example
 ```
 
 ## 1. Installation
@@ -40,7 +40,7 @@ Other Requirements:
 * Customizable Train / Inference engine with forward and infer modes
 * Tracking multiple training / validation losses and metrics
 * Loading / Saving model, optimizer and trackers based on validation loss
-* Training MNIST / CIFAR in 40-lines (see [example.py](example.py))
+* Training MNIST / CIFAR in 40-lines (see [example.py](example_projects/image_classifier/example.py))
 * Supports Apex Amp for mixed precision training
 
 
