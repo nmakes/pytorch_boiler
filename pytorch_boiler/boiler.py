@@ -2,6 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 from tqdm import tqdm
 from typing import Any
@@ -117,6 +118,26 @@ class Boiler(nn.Module):
         return output
 
     @init_overload_state
+    def decode_item_type(self, item):
+        """Decodes the type of the item. This function is used to handle multiple metrics
+
+        Args:
+            item (torch.Tensor|np.ndarray|dict): Either a tensor describing a loss/metric, or a dictionary of named tensors.
+
+        Returns:
+            dict: A dictionary with named tensors, where "summary" is a special key that specifies the loss to be backpropagated / metric to be tracked.
+        """
+        assert type(item) in [torch.Tensor, np.ndarray, dict], f"Either a tensor, numpy array, or a dictionary of (tag: value) must be passed. Given {type(item)}."
+        if type(item) == torch.Tensor or type(item) == np.ndarray:
+            return {'summary': item}
+        elif type(item) == dict:
+            keys = list(item.keys())
+            if len(keys) == 1:
+                item['summary'] = item[keys[0]]
+            assert 'summary' in item.keys(), "If a dictionary is returned from loss / performance, it must contain the key called 'summary' indicating the loss to backpropagate / metric to track."
+            return item
+
+    @init_overload_state
     def train_epoch(self):
         """Trains the model for one epoch.
 
@@ -127,21 +148,37 @@ class Boiler(nn.Module):
             Tracker: The tracker object.
         """
         for data in tqdm(self.train_dataloader):
-
+            # Set optimizer zero grad
             self.optimizer.zero_grad()
-            
-            model_output = self.forward(data)
-            loss = self.loss(model_output, data)
-            self.tracker.update('training_loss', loss.cpu().detach().numpy())
 
+            # Compute model output
+            model_output = self.forward(data)
+
+            # Compute loss & Update tracker
+            loss = self.loss(model_output, data)
+            decoded_loss = self.decode_item_type(loss)
+            self.tracker.update('training_loss', decoded_loss['summary'].cpu().detach().numpy())
+            for key in decoded_loss:
+                if key != 'summary':
+                    self.tracker.update('training_{}'.format(key), decoded_loss[key].cpu().detach().numpy())
+
+            # Compute performance and update tracker
             if is_method_overloaded(self.performance):
                 perf = self.performance(model_output, data)
-                self.tracker.update('training_perf', perf.cpu().detach().numpy())
+                decoded_perf = self.decode_item_type(perf)
+                self.tracker.update('training_perf', decoded_perf['summary'].cpu().detach().numpy() if type(decoded_perf['summary'])==torch.Tensor else decoded_perf['summary'])
+                for key in decoded_perf:
+                    if key != 'summary':
+                        self.tracker.update('training_{}'.format(key), decoded_perf[key].cpu().detach().numpy() if type(decoded_perf[key])==torch.Tensor else decoded_perf[key])
 
-            loss.backward()
+            # Backpropagate loss
+            decoded_loss['summary'].backward()
+
+            # Update model parameters
             self.optimizer.step()
+        
         return self.tracker
-    
+
     @init_overload_state
     def eval_epoch(self):
         """Evaluates the model for one epoch.
@@ -153,13 +190,26 @@ class Boiler(nn.Module):
             Tracker: The tracker object.
         """
         for data in tqdm(self.val_dataloader):
+            # Compute model output
             model_output = self.infer(data)
-            loss = self.loss(model_output, data)
-            self.tracker.update('validation_loss', loss.cpu().detach().numpy())
 
+            # Compute loss & Update tracker
+            loss = self.loss(model_output, data)
+            decoded_loss = self.decode_item_type(loss)
+            self.tracker.update('validation_loss', decoded_loss['summary'].cpu().detach().numpy())
+            for key in decoded_loss:
+                if key != 'summary':
+                    self.tracker.update('validation_{}'.format(key), decoded_loss[key].cpu().detach().numpy())
+
+            # Compute performance & Update tracker
             if is_method_overloaded(self.performance):
                 perf = self.performance(model_output, data)
-                self.tracker.update('validation_perf', perf.cpu().detach().numpy())
+                decoded_perf = self.decode_item_type(perf)
+                self.tracker.update('validation_perf', decoded_perf['summary'].cpu().detach().numpy() if type(decoded_perf['summary'])==torch.Tensor else decoded_perf['summary'])
+                for key in decoded_perf:
+                    if key != 'summary':
+                        self.tracker.update('validation_{}'.format(key), decoded_perf[key].cpu().detach().numpy() if type(decoded_perf[key])==torch.Tensor else decoded_perf[key])
+
         return self.tracker
 
     @init_overload_state
@@ -169,6 +219,7 @@ class Boiler(nn.Module):
         Returns:
             Boiler: Self.
         """
+        best_validation_loss = float('inf')
         start_epoch = 0
         if self.load_path is not None:
             print('\nBoiler | Loading from {}'.format(self.load_path))
@@ -176,21 +227,27 @@ class Boiler(nn.Module):
             self.load_state_dict(loaded_object['state_dict'])
             self.tracker.load_state_dict(loaded_object['tracker'])
             start_epoch = loaded_object['epoch'] + 1
+            best_validation_loss = loaded_object['best_validation_loss']
 
         for e in range(start_epoch, self.epochs):
             print('\nBoiler | Training epoch {}/{}...'.format(e+1, self.epochs))
             self.train_epoch()
             self.eval_epoch()
-            print(self.tracker.summarize())
+            summary = self.tracker.summarize()
+            print(prettify_dict(summary))
             self.tracker.stash()
         
             if self.save_path is not None:
-                os.makedirs(os.path.abspath(os.path.dirname(self.save_path)), exist_ok=True)
-                saved_object = {
-                    'state_dict': self.state_dict(),
-                    'tracker': self.tracker.state_dict(),
-                    'epoch': e
-                }
-                torch.save(saved_object, self.save_path)
+                if summary['validation_loss'] < best_validation_loss:
+                    best_validation_loss = summary['validation_loss']
+                    print('Saving training state at {}'.format(self.save_path))
+                    os.makedirs(os.path.abspath(os.path.dirname(self.save_path)), exist_ok=True)
+                    saved_object = {
+                        'state_dict': self.state_dict(),
+                        'tracker': self.tracker.state_dict(),
+                        'epoch': e,
+                        'best_validation_loss': best_validation_loss
+                    }
+                    torch.save(saved_object, self.save_path)
 
         return self
