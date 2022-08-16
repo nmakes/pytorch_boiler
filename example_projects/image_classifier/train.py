@@ -2,8 +2,8 @@
 import torch
 
 from pytorch_boiler import Boiler, overload
-from .example_model import TinyResNet
-from .example_dataloader import mnist_dataloader, cifar10_dataloader
+from .model import TinyResNet
+from .dataloader import mnist_dataloader, cifar10_dataloader
 
 
 class Trainer(Boiler):
