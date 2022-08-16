@@ -6,9 +6,9 @@
 [![Pytorch version](https://img.shields.io/badge/pytorch-%3E%3D%201.4.0-informational)](https://pytorch.org/get-started/previous-versions/)
 
 
-[![Code Size](https://img.shields.io/github/languages/code-size/nmakes/pytorch_boiler)]()
+[![Code Size](https://img.shields.io/github/languages/code-size/nmakes/pytorch_boiler)](https://github.com/nmakes/pytorch_boiler/)
 
-[![LICENCE](https://img.shields.io/badge/licence-MIT-blueviolet)]()
+[![LICENCE](https://img.shields.io/badge/licence-MIT-blueviolet)](LICENCE)
 
 
 # Introduction
