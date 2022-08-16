@@ -57,8 +57,10 @@ If you found Pytorch Boiler useful in your project, please cite the following:
 
 ```
 @software{Venkat_Pytorch_Boiler,
-author = {Venkat, Naveen},
-title = {{Pytorch Boiler}}
+    author = {Venkat, Naveen},
+    title = {{Pytorch Boiler}},
+    url = {https://github.com/nmakes/pytorch_boiler},
+    year = {2022}
 }
 ```
 
