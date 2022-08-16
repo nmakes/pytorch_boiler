@@ -1,0 +1,11 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Pytorch Boiler
+message: github.com/nmakes/pytorch_boiler
+type: software
+authors:
+  - given-names: Naveen
+    family-names: Venkat
+    email: nav.naveenvenkat@gmail.com
