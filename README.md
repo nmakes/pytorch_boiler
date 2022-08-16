@@ -22,12 +22,13 @@ Pytorch Boiler is a minimalistic boiler plate code for training pytorch models.
 * Tracking training / validation loss
 * Loading / Saving model, optimizer and tracker state_dict
 * 40-line example
-* Tracking custom performance metrics
+* Tracking multiple custom losses / metrics
+* Saving training state based on validation loss
 
 
 ## TODO
 
-* Writing individual metrics for tracking
-* Saving model based on validation metric
+* Support for multiple loss optimization using multiple optimizers
 * Support Apex Amp training
 * Support for torchscript
+* Documentation: using metrics  losses beyond the example script
