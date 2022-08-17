@@ -18,7 +18,7 @@ Pytorch Boiler is a minimalistic boiler plate code for training pytorch models.
 
 * Clone this repository
 
-    ```
+    ```bash
         git clone https://github.com/nmakes/pytorch_boiler
         cd pytorch_boiler
     ```
@@ -27,13 +27,13 @@ Pytorch Boiler is a minimalistic boiler plate code for training pytorch models.
 
     40-line [MNIST/CIFAR classification](example_projects/image_classifier/train.py):
 
-    ```
+    ```bash
         PYTHONPATH=$PYTHONPATH:./ python3 -m example_projects.image_classifier.train
     ```
 
     50-line [MNIST/CIFAR autoencoder](example_projects/image_autoencoder/train.py):
 
-    ```
+    ```bash
         PYTHONPATH=$PYTHONPATH:./ python3 -m example_projects.image_autoencoder.train
     ```
 
