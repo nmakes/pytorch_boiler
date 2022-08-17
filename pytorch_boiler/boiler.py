@@ -130,11 +130,12 @@ class Boiler(nn.Module):
         return output
 
     @init_overload_state
-    def decode_item_type(self, item):
+    def decode_item_type(self, item, require_summary=True):
         """Decodes the type of the item. This function is used to handle multiple metrics
 
         Args:
             item (torch.Tensor|np.ndarray|dict): Either a tensor describing a loss/metric, or a dictionary of named tensors.
+            require_summary (bool): If True then the item of type dictionary will be enforced to have a key 'summary' if more than one keys are present.
 
         Returns:
             dict: A dictionary with named tensors, where "summary" is a special key that specifies the loss to be backpropagated / metric to be tracked.
@@ -146,7 +147,8 @@ class Boiler(nn.Module):
             keys = list(item.keys())
             if len(keys) == 1:
                 item['summary'] = item[keys[0]]
-            assert 'summary' in item.keys(), "If a dictionary is returned from loss / performance, it must contain the key called 'summary' indicating the loss to backpropagate / metric to track."
+            if require_summary:
+                assert 'summary' in item.keys(), "If a dictionary is returned from loss / performance, it must contain the key called 'summary' indicating the loss to backpropagate / metric to track."
             return item
 
     @init_overload_state
@@ -169,7 +171,7 @@ class Boiler(nn.Module):
 
             # Compute loss & Update tracker
             loss = self.loss(model_output, data)
-            decoded_loss = self.decode_item_type(loss)
+            decoded_loss = self.decode_item_type(loss, require_summary=True)
             self.tracker.update('training_loss', decoded_loss['summary'].cpu().detach().numpy())
             for key in decoded_loss:
                 if key != 'summary':
@@ -178,7 +180,7 @@ class Boiler(nn.Module):
             # Compute performance and update tracker
             if is_method_overloaded(self.performance):
                 perf = self.performance(model_output, data)
-                decoded_perf = self.decode_item_type(perf)
+                decoded_perf = self.decode_item_type(perf, require_summary=True)
                 self.tracker.update('training_perf', decoded_perf['summary'].cpu().detach().numpy() if type(decoded_perf['summary'])==torch.Tensor else decoded_perf['summary'])
                 for key in decoded_perf:
                     if key != 'summary':
@@ -213,7 +215,7 @@ class Boiler(nn.Module):
 
             # Compute loss & Update tracker
             loss = self.loss(model_output, data)
-            decoded_loss = self.decode_item_type(loss)
+            decoded_loss = self.decode_item_type(loss, require_summary=True)
             self.tracker.update('validation_loss', decoded_loss['summary'].cpu().detach().numpy())
             for key in decoded_loss:
                 if key != 'summary':
@@ -222,7 +224,7 @@ class Boiler(nn.Module):
             # Compute performance & Update tracker
             if is_method_overloaded(self.performance):
                 perf = self.performance(model_output, data)
-                decoded_perf = self.decode_item_type(perf)
+                decoded_perf = self.decode_item_type(perf, require_summary=True)
                 self.tracker.update('validation_perf', decoded_perf['summary'].cpu().detach().numpy() if type(decoded_perf['summary'])==torch.Tensor else decoded_perf['summary'])
                 for key in decoded_perf:
                     if key != 'summary':
