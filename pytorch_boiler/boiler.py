@@ -17,13 +17,14 @@ from .tracker import Tracker
 
 class Boiler(nn.Module):
 
-    def __init__(self, model, optimizer, train_dataloader, val_dataloader, epochs, save_path=None, load_path=None, mixed_precision=False):
+    def __init__(self, model, optimizer, train_dataloader, val_dataloader, epochs, patience=None, save_path=None, load_path=None, mixed_precision=False):
         super(Boiler, self).__init__()
         self.model = model
         self.optimizer = optimizer
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
         self.epochs = epochs
+        self.patience = patience
         
         self.save_path = save_path
         self.load_path = load_path
@@ -33,6 +34,7 @@ class Boiler(nn.Module):
 
         # Initialize tracker
         self.tracker = Tracker()
+        self.patience_counter = 0
 
         # Initialize mixed precision
         if self.mixed_precision:
@@ -260,18 +262,28 @@ class Boiler(nn.Module):
             summary = self.tracker.summarize()
             print(prettify_dict(summary))
             self.tracker.stash()
+
+            if summary['validation_loss'] < best_validation_loss:
+                self.patience_counter = 0
+                to_save = True
+            else:
+                self.patience_counter += 1
+                to_save = False
         
-            if self.save_path is not None:
-                if summary['validation_loss'] < best_validation_loss:
-                    best_validation_loss = summary['validation_loss']
-                    print('Saving training state at {}'.format(self.save_path))
-                    os.makedirs(os.path.abspath(os.path.dirname(self.save_path)), exist_ok=True)
-                    saved_object = {
-                        'state_dict': self.state_dict(),
-                        'tracker': self.tracker.state_dict(),
-                        'epoch': e,
-                        'best_validation_loss': best_validation_loss
-                    }
-                    torch.save(saved_object, self.save_path)
+            if self.save_path is not None and to_save:
+                best_validation_loss = summary['validation_loss']
+                print('Saving training state at {}'.format(self.save_path))
+                os.makedirs(os.path.abspath(os.path.dirname(self.save_path)), exist_ok=True)
+                saved_object = {
+                    'state_dict': self.state_dict(),
+                    'tracker': self.tracker.state_dict(),
+                    'epoch': e,
+                    'best_validation_loss': best_validation_loss
+                }
+                torch.save(saved_object, self.save_path)
+            
+            if (self.patience is not None) and (self.patience_counter > self.patience):
+                print('Maximum patience reached. Stopping training.')
+                break
 
         return self
