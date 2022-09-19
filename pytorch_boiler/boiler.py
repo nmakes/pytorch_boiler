@@ -37,6 +37,17 @@ class Boiler(nn.Module):
         # Initialize mixed precision
         if self.mixed_precision:
             self.model, self.optimizer = amp.initialize(model, optimizer, opt_level="O1")
+        
+        # Load model state
+        self.start_epoch = 0
+        self.best_validation_loss = float('inf')
+        if self.load_path is not None:
+            print('\nBoiler | Loading from {}'.format(self.load_path))
+            loaded_object = torch.load(self.load_path)
+            self.load_state_dict(loaded_object['state_dict'])
+            self.tracker.load_state_dict(loaded_object['tracker'])
+            self.start_epoch = loaded_object['epoch'] + 1
+            self.best_validation_loss = loaded_object['best_validation_loss']
 
     @init_overload_state
     def pre_process(self, x):
@@ -239,15 +250,8 @@ class Boiler(nn.Module):
         Returns:
             Boiler: Self.
         """
-        best_validation_loss = float('inf')
-        start_epoch = 0
-        if self.load_path is not None:
-            print('\nBoiler | Loading from {}'.format(self.load_path))
-            loaded_object = torch.load(self.load_path)
-            self.load_state_dict(loaded_object['state_dict'])
-            self.tracker.load_state_dict(loaded_object['tracker'])
-            start_epoch = loaded_object['epoch'] + 1
-            best_validation_loss = loaded_object['best_validation_loss']
+        best_validation_loss = self.best_validation_loss
+        start_epoch = self.start_epoch
 
         for e in range(start_epoch, self.epochs):
             print('\nBoiler | Training epoch {}/{}...'.format(e+1, self.epochs))
