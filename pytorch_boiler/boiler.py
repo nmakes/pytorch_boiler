@@ -17,10 +17,11 @@ from .tracker import Tracker
 
 class Boiler(nn.Module):
 
-    def __init__(self, model, optimizer, train_dataloader, val_dataloader, epochs, patience=None, save_path=None, load_path=None, mixed_precision=False):
+    def __init__(self, model, optimizer, scheduler, train_dataloader, val_dataloader, epochs, patience=None, save_path=None, load_path=None, mixed_precision=False):
         super(Boiler, self).__init__()
         self.model = model
         self.optimizer = optimizer
+        self.scheduler = scheduler
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
         self.epochs = epochs
@@ -46,7 +47,9 @@ class Boiler(nn.Module):
         if self.load_path is not None:
             print('\nBoiler | Loading from {}'.format(self.load_path))
             loaded_object = torch.load(self.load_path)
-            self.load_state_dict(loaded_object['state_dict'])
+            self.model.load_state_dict(loaded_object['model_state_dict'])
+            self.optimizer.load_state_dict(loaded_object['optimizer_state_dict'])
+            self.scheduler.load_state_dict(loaded_object['scheduler_state_dict'])
             self.tracker.load_state_dict(loaded_object['tracker'])
             self.start_epoch = loaded_object['epoch'] + 1
             self.best_validation_loss = loaded_object['best_validation_loss']
@@ -259,6 +262,7 @@ class Boiler(nn.Module):
             print('\nBoiler | Training epoch {}/{}...'.format(e+1, self.epochs))
             self.train_epoch()
             self.eval_epoch()
+            self.scheduler.step()
             summary = self.tracker.summarize()
             print(prettify_dict(summary))
             self.tracker.stash()
@@ -275,7 +279,9 @@ class Boiler(nn.Module):
                 print('Saving training state at {}'.format(self.save_path))
                 os.makedirs(os.path.abspath(os.path.dirname(self.save_path)), exist_ok=True)
                 saved_object = {
-                    'state_dict': self.state_dict(),
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': self.optimizer.state_dict(),
+                    'scheduler_state_dict': self.scheduler.state_dict(),
                     'tracker': self.tracker.state_dict(),
                     'epoch': e,
                     'best_validation_loss': best_validation_loss

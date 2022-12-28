@@ -42,9 +42,11 @@ if __name__ == '__main__':
     # dataloader = cifar10_dataloader; dataset = 'cifar10'; in_channels = 3; batch_size = 256; exp_tag='autoencoder_cifar10'
     model = TinyResNetAE(in_channels=in_channels, hidden_channels=4, expansion_factor=2, latent_image_size=(4, 4)).cuda()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, weight_decay=1e-5)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10000, gamma=1)
     train_dataloader = dataloader(root=f'./data/{dataset}', batch_size=batch_size, train=True, shuffle=True, drop_last=True)
     val_dataloader = dataloader(root=f'./data/{dataset}', batch_size=batch_size, train=False, shuffle=False, drop_last=False)
 
-    trainer = Trainer(model=model, optimizer=optimizer, train_dataloader=train_dataloader, val_dataloader=val_dataloader, 
+    trainer = Trainer(model=model, optimizer=optimizer, scheduler=scheduler,
+                      train_dataloader=train_dataloader, val_dataloader=val_dataloader, 
                       epochs=10, save_path=f'./model/{exp_tag}/state_dict.pt', load_path=None, mixed_precision=False)
     trainer.fit()
