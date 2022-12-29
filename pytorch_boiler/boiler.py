@@ -3,10 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-try:
-    from apex import amp
-except:
-    amp = None
 
 from tqdm import tqdm
 from typing import Any
@@ -31,15 +27,13 @@ class Boiler(nn.Module):
         self.load_path = load_path
 
         self.mixed_precision = mixed_precision
-        assert (not mixed_precision) or (amp is not None), "A valid nvidia-apex installation must be available if mixed_precision=True."
 
         # Initialize tracker
         self.tracker = Tracker()
         self.patience_counter = 0
 
         # Initialize mixed precision
-        if self.mixed_precision:
-            self.model, self.optimizer = amp.initialize(model, optimizer, opt_level="O1")
+        self.scaler = torch.cuda.amp.GradScaler(enabled=self.mixed_precision)
         
         # Load model state
         self.start_epoch = 0
@@ -49,6 +43,7 @@ class Boiler(nn.Module):
             loaded_object = torch.load(self.load_path)
             self.model.load_state_dict(loaded_object['model_state_dict'])
             self.optimizer.load_state_dict(loaded_object['optimizer_state_dict'])
+            self.scaler.load_state_dict(loaded_object['scaler_state_dict'])
             self.scheduler.load_state_dict(loaded_object['scheduler_state_dict'])
             self.tracker.load_state_dict(loaded_object['tracker'])
             self.start_epoch = loaded_object['epoch'] + 1
@@ -90,7 +85,8 @@ class Boiler(nn.Module):
         """
         if is_method_overloaded(self.pre_process):
             x = self.pre_process(x)
-        x = self.model(x)
+        with torch.autocast('cuda', dtype=torch.float16, enabled=(self.mixed_precision and self.training)):
+            x = self.model(x)
         if is_method_overloaded(self.post_process):
             x = self.post_process(x)
         return x
@@ -188,30 +184,41 @@ class Boiler(nn.Module):
             # Compute loss & Update tracker
             loss = self.loss(model_output, data)
             decoded_loss = self.decode_item_type(loss, require_summary=True)
-            self.tracker.update('training_loss', decoded_loss['summary'].cpu().detach().numpy())
+            self.tracker.update(key='training_loss', 
+                                value=decoded_loss['summary'].cpu().detach().numpy())
             for key in decoded_loss:
                 if key != 'summary':
-                    self.tracker.update('training_{}'.format(key), decoded_loss[key].cpu().detach().numpy())
+                    self.tracker.update(key='training_{}'.format(key), 
+                                        value=decoded_loss[key].cpu().detach().numpy())
 
             # Compute performance and update tracker
             if is_method_overloaded(self.performance):
                 perf = self.performance(model_output, data)
                 decoded_perf = self.decode_item_type(perf, require_summary=True)
-                self.tracker.update('training_perf', decoded_perf['summary'].cpu().detach().numpy() if type(decoded_perf['summary'])==torch.Tensor else decoded_perf['summary'])
+                self.tracker.update(key='training_perf', 
+                                    value=decoded_perf['summary'].cpu().detach().numpy() \
+                                        if type(decoded_perf['summary'])==torch.Tensor \
+                                        else decoded_perf['summary'])
                 for key in decoded_perf:
                     if key != 'summary':
-                        self.tracker.update('training_{}'.format(key), decoded_perf[key].cpu().detach().numpy() if type(decoded_perf[key])==torch.Tensor else decoded_perf[key])
+                        self.tracker.update(key='training_{}'.format(key), 
+                                            value=decoded_perf[key].cpu().detach().numpy() \
+                                                  if type(decoded_perf[key])==torch.Tensor \
+                                                  else decoded_perf[key])
 
-            # Backpropagate loss
             if self.mixed_precision:
-                with amp.scale_loss(decoded_loss['summary'], self.optimizer) as scaled_loss:
-                    scaled_loss.backward()
+                # Scale the loss
+                scaled_loss = self.scaler.scale(decoded_loss['summary'])
+                # Backpropagate loss
+                scaled_loss.backward()
+                # Update model parameters
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
             else:
+                # Backpropagate loss
                 decoded_loss['summary'].backward()
-
-            # Update model parameters
-            self.optimizer.step()
-        
+                # Update model parameters
+                self.optimizer.step()
         return self.tracker
 
     @init_overload_state
@@ -281,6 +288,7 @@ class Boiler(nn.Module):
                 saved_object = {
                     'model_state_dict': self.model.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
+                    'scaler_state_dict': self.scaler.state_dict(),
                     'scheduler_state_dict': self.scheduler.state_dict(),
                     'tracker': self.tracker.state_dict(),
                     'epoch': e,

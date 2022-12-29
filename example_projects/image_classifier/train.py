@@ -39,3 +39,4 @@ if __name__ == '__main__':
     trainer = Trainer(model=model, optimizer=optimizer, scheduler=scheduler, 
                       train_dataloader=train_dataloader, val_dataloader=val_dataloader, 
                       epochs=10, save_path=f'./model/{exp_tag}/state_dict.pt', load_path=None, mixed_precision=True)
+    trainer.fit()
